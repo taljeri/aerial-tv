@@ -182,6 +182,11 @@ JavaScript, no frameworks, no build tools.
 
 ---
 
+## See also
+
+[webos-tv-mcp](https://github.com/taljeri/webos-tv-mcp) - drive the same TV from an
+agent or the terminal: status, apps, launch, volume.
+
 ## Licence
 
 MIT for the code — see [LICENSE](LICENSE).
