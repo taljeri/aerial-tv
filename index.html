@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nature Loop</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;cursor:none}
+  #v{position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000;
+     opacity:0;transition:opacity 1.2s ease-in-out}
+  #v.on{opacity:1}
+  #greet{position:fixed;top:12vh;left:0;right:0;text-align:center;color:rgba(255,255,255,.94);
+         opacity:0;transition:opacity 1.6s ease-in-out;pointer-events:none;
+         text-shadow:0 2px 24px rgba(0,0,0,.55);font-family:-apple-system,"Helvetica Neue",Arial,sans-serif}
+  #greet.on{opacity:1}
+  #g1{font-size:clamp(38px,5.4vw,86px);font-weight:200;letter-spacing:.06em}
+  #g2{margin-top:.4em;font-size:clamp(17px,1.7vw,28px);font-weight:300;letter-spacing:.16em;opacity:.7}
+  #hud{position:fixed;left:30px;bottom:26px;font:18px/1.5 ui-monospace,Menlo,monospace;color:#fff;
+       opacity:0;transition:opacity .6s;background:rgba(0,0,0,.45);padding:8px 14px;border-radius:8px}
+  #hud.on{opacity:.85}
+</style>
+</head>
+<body>
+<video id="v" autoplay muted playsinline preload="auto"></video>
+<div id="greet"><div id="g1"></div><div id="g2"></div></div>
+<div id="hud"></div>
+<script src="sources.js"></script>
+<script>
+var BUILTIN = (typeof AERIALS !== 'undefined' && AERIALS.length) ? AERIALS : FREE;
+var SEEN_KEY='nl_seen_v7';
+var NAME='';   // optional: your name, e.g. 'Sam' -> 'Good evening, Sam'
+var pool=BUILTIN.slice(), seen={}, queue=[];
+try { (JSON.parse(localStorage.getItem(SEEN_KEY)||'[]')).forEach(function(u){ seen[u]=1; }); } catch(e) {}
+var V=document.getElementById('v');
+var busy=false, curItem=null, segTimer=null, pausedSince=0, booting=true;
+
+function persist(){ try{ localStorage.setItem(SEEN_KEY, JSON.stringify(Object.keys(seen))); }catch(e){} }
+function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+function refill(){ queue=shuffle(pool.filter(function(x){ return !seen[x.u]; })); if(!queue.length){ seen={}; persist(); queue=shuffle(pool.slice()); } }
+function pick(){ if(!queue.length) refill(); var it=queue.shift(); if(it){ seen[it.u]=1; persist(); } return it; }
+
+function scheduleNext(){
+  clearTimeout(segTimer);
+  var d=V.duration, seg=32+Math.random()*18;
+  if(isFinite(d)&&d>10) seg=Math.min(seg,d-6);
+  segTimer=setTimeout(beginTransition, seg*1000);
+}
+function fadeInWhenMoving(){
+  var done=false;
+  var iv=setInterval(function(){
+    if(done) return;
+    if(V.readyState>=3 && !V.paused && V.currentTime>0.3){
+      done=true; clearInterval(iv);
+      V.classList.add('on'); busy=false; booting=false; pausedSince=0;
+      scheduleNext();
+    }
+  },120);
+  setTimeout(function(){
+    if(done) return;
+    done=true; clearInterval(iv);
+    V.classList.add('on'); busy=false; booting=false; pausedSince=0;
+    scheduleNext();
+  },9000);
+}
+function beginTransition(){
+  if(busy) return;
+  busy=true; clearTimeout(segTimer);
+  V.classList.remove('on');
+  setTimeout(function(){
+    var it=pick();
+    if(!it){ busy=false; return; }
+    curItem=it;
+    V.src=it.u; V.load();
+    var p=V.play(); if(p&&p.catch) p.catch(function(){});
+    fadeInWhenMoving();
+  },1050);
+}
+V.addEventListener('error',function(){
+  busy=false; V.classList.remove('on');
+  setTimeout(function(){ beginTransition(); },1500);
+});
+V.addEventListener('ended',beginTransition);
+setInterval(function(){
+  if(busy||booting) return;
+  if(V.paused){
+    if(!pausedSince) pausedSince=Date.now();
+    if(Date.now()-pausedSince>7000){ pausedSince=0; beginTransition(); }
+  } else pausedSince=0;
+},2000);
+
+function scheduleGreeting(){
+  var wait=60000-(Date.now()%60000);
+  setTimeout(function(){
+    showGreeting();
+    setInterval(showGreeting,60000);
+  }, wait+200);
+}
+
+function greetingText(){ var h=new Date().getHours(); if(h>=5&&h<12) return 'Good morning'; if(h>=12&&h<17) return 'Good afternoon'; if(h>=17&&h<21) return 'Good evening'; return 'Good night'; }
+function fmtDate(){
+  var d=new Date();
+  var date=d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var time=d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  return date+'   ·   '+time;
+}
+function showGreeting(){
+  document.getElementById('g1').textContent=greetingText()+(NAME?', '+NAME:'');
+  document.getElementById('g2').textContent=fmtDate();
+  var g=document.getElementById('greet');
+  g.classList.add('on');
+  clearTimeout(showGreeting.t);
+  showGreeting.t=setTimeout(function(){ g.classList.remove('on'); },10000);
+}
+setInterval(function(){
+  var g=document.getElementById('greet');
+  if(g.classList.contains('on')) document.getElementById('g2').textContent=fmtDate();
+},1000);
+
+window.addEventListener('keydown',function(e){
+  if(e.keyCode===13||e.keyCode===415){ document.getElementById('hud').classList.toggle('on'); }
+});
+var first=pick();
+if(first){ curItem=first; V.src=first.u; V.load(); var p0=V.play(); if(p0&&p0.catch) p0.catch(function(){}); busy=true; fadeInWhenMoving(); }
+scheduleGreeting();
+</script>
+</body>
+</html>

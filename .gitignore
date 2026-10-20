@@ -1,0 +1,4 @@
+.DS_Store
+dist/
+*.ipk
+node_modules/
