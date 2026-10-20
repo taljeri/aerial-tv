@@ -170,6 +170,10 @@ rights to.
 was worth chasing. No code from Aerial is used; this is a separate webOS
 implementation.
 
+**REA** — [morluto/rea](https://github.com/morluto/rea), the reverse-engineering
+MCP toolkit whose public documentation framed the approach used here to map the
+TV's undocumented APIs. No REA code is used by this app.
+
 **Packaging** — [@webos-tools/cli](https://www.npmjs.com/package/@webos-tools/cli)
 by LG Electronics.
 
